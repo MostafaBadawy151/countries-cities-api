@@ -1,0 +1,531 @@
+{
+  "info": {
+    "name": "Bridge Task - Countries & Cities API",
+    "description": "Requests for the Countries & Cities API.\n\nRun the folders in order (Countries → Cities → Cleanup); create requests save the new ids into collection variables used by later requests. The **Error cases** folder relies on the seeded data (Egypt has id 1 and has cities).\n\nSet `baseUrl` to match your launch profile (default `http://localhost:5035`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5035" },
+    { "key": "countryId", "value": "1" },
+    { "key": "secondCountryId", "value": "2" },
+    { "key": "cityId", "value": "1" },
+    { "key": "secondCityId", "value": "2" }
+  ],
+  "item": [
+    {
+      "name": "Countries",
+      "item": [
+        {
+          "name": "Create Country",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Location header points to the new country', () => pm.response.to.have.header('Location'));",
+                  "const body = pm.response.json();",
+                  "pm.test('Code is normalized to uppercase', () => pm.expect(body.code).to.eql('DE'));",
+                  "pm.collectionVariables.set('countryId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Germany\",\n  \"code\": \"de\"\n}"
+            },
+            "url": "{{baseUrl}}/api/countries"
+          }
+        },
+        {
+          "name": "Create Second Country",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('secondCountryId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Italy\",\n  \"code\": \"IT\"\n}"
+            },
+            "url": "{{baseUrl}}/api/countries"
+          }
+        },
+        {
+          "name": "Get Country by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns the requested country', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('countryId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/countries/{{countryId}}"
+          }
+        },
+        {
+          "name": "Get Countries (paged & filtered)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Has paging metadata', () => pm.expect(body).to.include.keys('items', 'pageNumber', 'pageSize', 'totalCount', 'totalPages', 'hasNextPage', 'hasPreviousPage'));",
+                  "pm.test('Respects pageSize', () => pm.expect(body.items.length).to.be.at.most(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/countries?pageNumber=1&pageSize=5&search=a&sortBy=name&sortDirection=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "5", "description": "1-100" },
+                { "key": "search", "value": "a", "description": "Partial match on name or code (case-insensitive)" },
+                { "key": "code", "value": "EG", "description": "Exact ISO code", "disabled": true },
+                { "key": "sortBy", "value": "name", "description": "name | code | createdAt" },
+                { "key": "sortDirection", "value": "asc", "description": "asc | desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Country",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Name updated', () => pm.expect(body.name).to.eql('Federal Republic of Germany'));",
+                  "pm.test('UpdatedAtUtc is set', () => pm.expect(body.updatedAtUtc).to.not.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Federal Republic of Germany\",\n  \"code\": \"DE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/countries/{{countryId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cities",
+      "item": [
+        {
+          "name": "Create City",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Belongs to the country', () => pm.expect(body.countryId).to.eql(Number(pm.collectionVariables.get('countryId'))));",
+                  "pm.collectionVariables.set('cityId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Berlin\",\n  \"countryId\": {{countryId}},\n  \"population\": 3700000\n}"
+            },
+            "url": "{{baseUrl}}/api/cities"
+          }
+        },
+        {
+          "name": "Create Another City",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('secondCityId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Munich\",\n  \"countryId\": {{countryId}},\n  \"population\": 1500000\n}"
+            },
+            "url": "{{baseUrl}}/api/cities"
+          }
+        },
+        {
+          "name": "Get City by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Includes country name', () => pm.expect(pm.response.json().countryName).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cities/{{cityId}}"
+          }
+        },
+        {
+          "name": "Get Cities (paged & filtered)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('All cities meet the population filter', () => items.forEach(c => pm.expect(c.population).to.be.at.least(1000000)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/cities?pageNumber=1&pageSize=10&minPopulation=1000000&sortBy=population&sortDirection=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cities"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10", "description": "1-100" },
+                { "key": "search", "value": "ber", "description": "Partial match on city name (case-insensitive)", "disabled": true },
+                { "key": "countryId", "value": "{{countryId}}", "disabled": true },
+                { "key": "minPopulation", "value": "1000000" },
+                { "key": "maxPopulation", "value": "5000000", "disabled": true },
+                { "key": "sortBy", "value": "population", "description": "name | population | country | createdAt" },
+                { "key": "sortDirection", "value": "desc", "description": "asc | desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Cities by Country ID (paged)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const countryId = Number(pm.collectionVariables.get('countryId'));",
+                  "pm.test('Only cities of that country', () => pm.response.json().items.forEach(c => pm.expect(c.countryId).to.eql(countryId)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/{{countryId}}/cities?pageNumber=1&pageSize=10&sortBy=name&sortDirection=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "{{countryId}}", "cities"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "search", "value": "mun", "disabled": true },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sortDirection", "value": "asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update City (move to another country)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Moved to second country', () => pm.expect(pm.response.json().countryId).to.eql(Number(pm.collectionVariables.get('secondCountryId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Berlin\",\n  \"countryId\": {{secondCountryId}},\n  \"population\": 3800000\n}"
+            },
+            "url": "{{baseUrl}}/api/cities/{{cityId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error cases",
+      "item": [
+        {
+          "name": "Create Country - validation error (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Lists errors for Name and Code', () => pm.expect(pm.response.json().errors).to.include.keys('Name', 'Code'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"\",\n  \"code\": \"EGY\"\n}" },
+            "url": "{{baseUrl}}/api/countries"
+          }
+        },
+        {
+          "name": "Create Country - duplicate name (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"egypt\",\n  \"code\": \"ZZ\"\n}" },
+            "url": "{{baseUrl}}/api/countries"
+          }
+        },
+        {
+          "name": "Get Country - not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('ProblemDetails response', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/countries/999999" }
+        },
+        {
+          "name": "Get Countries - invalid paging (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/countries?pageNumber=0&pageSize=500&sortBy=unknown" }
+        },
+        {
+          "name": "Delete Country with cities (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/countries/1" }
+        },
+        {
+          "name": "Create City - unknown country (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Atlantis\",\n  \"countryId\": 999999,\n  \"population\": 100\n}" },
+            "url": "{{baseUrl}}/api/cities"
+          }
+        },
+        {
+          "name": "Create City - duplicate in country (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"CAIRO\",\n  \"countryId\": 1\n}" },
+            "url": "{{baseUrl}}/api/cities"
+          }
+        },
+        {
+          "name": "Get Cities - min > max population (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/cities?minPopulation=1000&maxPopulation=10" }
+        },
+        {
+          "name": "Get Cities by Country - unknown country (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/countries/999999/cities" }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Delete City",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/cities/{{cityId}}" }
+        },
+        {
+          "name": "Delete Second City",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/cities/{{secondCityId}}" }
+        },
+        {
+          "name": "Get Deleted City (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/cities/{{cityId}}" }
+        },
+        {
+          "name": "Delete Country",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/countries/{{countryId}}" }
+        },
+        {
+          "name": "Delete Second Country",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/countries/{{secondCountryId}}" }
+        }
+      ]
+    }
+  ]
+}

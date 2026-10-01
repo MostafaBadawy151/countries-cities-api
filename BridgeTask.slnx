@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BridgeTask.Api/BridgeTask.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BridgeTask.Api.Tests/BridgeTask.Api.Tests.csproj" />
+  </Folder>
+</Solution>
